@@ -3,6 +3,13 @@ type Card = string;
 type Suit = string[];
 type Deck = Card[];
 
+enum Royals {
+  Jack = 'J',
+  Queen = 'Q',
+  King = 'K',
+  Ace = 'A'
+};
+
 const hearts = 'H2 H3 H4 H5 H6 H7 H8 H9 H10 HJ HQ HK HA'.split(' ');
 const spades = 'S2 S3 S4 S5 S6 S7 S8 S9 S10 SJ SQ SK SA'.split(' ');
 const diamonds = 'D2 D3 D4 D5 D6 D7 D8 D9 D10 DJ DQ DK DA'.split(' ');
@@ -15,7 +22,7 @@ const createDeck: CreateDeck = (suit1, suit2, suit3, suit4) => {
   deck = deck.concat(suit3);
   deck = deck.concat(suit4);
   return deck;
-}
+};
 
 const fullDeck = createDeck(hearts, spades, diamonds, clubs);
 
@@ -25,15 +32,6 @@ interface PlayerCard {
   faceUp: boolean;
 };
 
-// a hand should be a class
-// interface Hand {
-//   cards: PlayerCard[]
-//   calculateValue: CalculateValue;
-//   value: number;
-//   split: Split;
-// }
-// type CalculateValue = (...args: PlayerCard[]) => number;
-// type Split = (card1: Card, card2: Card) => [Hand, Hand];
 
 class Hand {
   public cards: PlayerCard[];
@@ -45,33 +43,40 @@ class Hand {
     // but I think not because of how I declare cards right above
   }
   public value(): number {
-    const mapRoyalToVal = {
+    const mapRoyalToVal: { [key in Royals]: number } = {
       J: 10,
       Q: 10,
       K: 10,
       A: 11,
     };
-    const royalKeys = Object.keys(mapRoyalToVal);
+    const royalKeys = Object.keys(mapRoyalToVal) as Royals[];
     return this.cards.reduce((acc: number, card: PlayerCard) => {
-      let num = card.value.slice(1);
-      if (acc > 21 && royalKeys.indexOf(num) === 4) {
+      const cardVal = card.value.slice(1) as Royals; // a little worried about this as Royals
+      let num: string | number = cardVal;
+      if (acc > 21 && royalKeys.indexOf(cardVal) === 4) {
         num = '1';
       }
-      else if (royalKeys.indexOf(num) === 4 && (acc + 11) > 21) {
+      else if (royalKeys.indexOf(cardVal) === 4 && (acc + 11) > 21) {
         num = '1';
       }
-      else if (royalKeys.indexOf(num) > -1) {
-        num = mapRoyalToVal[num]
+      else if (royalKeys.indexOf(cardVal) > -1) {
+        num = mapRoyalToVal[cardVal]
       }
       acc += Number(num);
       return acc;
     }, 0)
   };
+  public checkPair(): boolean {
+    const card1 = this.cards[0];
+    const card2 = this.cards[1];
+    if (card1.value.slice(1) === card2.value.slice(1)) return true;
+    return false;
+  }
   public split(): [Hand, Hand] {
     const card1 = this.cards[0];
     const card2 = this.cards[1];
-    const splitHandOne = new Hand(card1, dealCard(shuffledDeck));
-    const splitHandTwo = new Hand(card2, dealCard(shuffledDeck));
+    const splitHandOne = new Hand(card1, dealCard(shuffledDeck), `${this.name} first hand`);
+    const splitHandTwo = new Hand(card2, dealCard(shuffledDeck), `${this.name} second hand`);
     // come back to this;
     return [splitHandOne, splitHandTwo];
   }
@@ -81,7 +86,7 @@ class Hand {
     return card;
   }
 
-}
+};
 
 // shuffling and dealing
 type Shuffle = (deck: Deck) => Deck;
@@ -101,22 +106,20 @@ const shuffle: Shuffle = unshuffledDeck => {
     }
   }
   return shuffledDeck;
-}
+};
 
-const shuffledDeck = shuffle(fullDeck);
+type InitialDeal = (shuffledDeck: Deck, playerName: string) => [Hand, Hand];
 
-
-type InitialDeal = (shuffledDeck: Deck) => [Hand, Hand]
-
-const initialDeal: InitialDeal = shuffledDeck => {
+const initialDeal: InitialDeal = (shuffledDeck, playerName) => {
   const playerCards = [];
   const dealerCards = [];
   for (let i = 0; i < 4; i++) {
     const card = shuffledDeck.pop();
     const handCard = {
       value: '',
-      faceUp: false
+      faceUp: true,
     }
+    handCard.faceUp = true;
     if (i % 2 === 0 && card !== undefined) {
       handCard.value = card;
       playerCards.push(handCard);
@@ -129,22 +132,29 @@ const initialDeal: InitialDeal = shuffledDeck => {
         console.log('also need to check for 21');
       }
     }
-    else if (card !== undefined) {
+    else if (i === 1 && card !== undefined) {
       handCard.value = card;
-      handCard.faceUp = true;
+      handCard.faceUp = false;
       dealerCards.push(handCard)
     }
   }
-  const playerHand = new Hand(playerCards[0], playerCards[1]);
   const dealerHand = new Hand(dealerCards[0], dealerCards[1]);
-  return [playerHand, dealerHand];
-}
+  const playerHand = new Hand(playerCards[0], playerCards[1], playerName);
+  return [dealerHand, playerHand];
+};
 
 type DealCard = (shuffledDeck: Deck) => PlayerCard;
 
 const dealCard: DealCard = shuffledDeck => {
-  const card: PlayerCard = shuffledDeck.pop();
-  return card;
+  const value = shuffledDeck.pop();
+  if (value) {
+    const cardToDeal: PlayerCard = {
+      value,
+      faceUp: true,
+    }
+    return cardToDeal;
+  }
+  throw new Error('shuffledDeck was empty')
 };
 
 
@@ -154,12 +164,38 @@ const hitParticipant: HitParticipant = (hand, deck) => {
   const card = dealCard(deck);
   hand.hit(card);
   return card;
+};
+
+// need to deal with possibility that player has two hands
+type FinishGame = (dealerHand: Hand, playerHand: Hand) => string;
+
+const finishGame: FinishGame = (dealerHand, playerHand) => {
+  if (playerHand.value > dealerHand.value) return `${playerHand.name} wins!`;
+  return `${dealerHand.name} wins!`;
+};
+
+// simulate game
+// need to shuffle the deck first though,
+// so changes to it persist
+const shuffledDeck = shuffle(fullDeck);
+
+type StartGame = (playerName: string, shuffledDeck: Deck) => Hand[];
+
+const startGame: StartGame = (playerName, deck) => {
+  const initialHands = initialDeal(deck, playerName);
+  const dealerHand = initialHands[0];
+  const playerHand = initialHands[1];
+  // need to check for blackjack
+  if (playerHand.checkPair()) {
+    console.log('need to offer split')
+    // for now will always split
+    const splitPlayerHands = playerHand.split();
+    return [dealerHand].concat(splitPlayerHands)
+  }
+  console.log('playerHand: ', playerHand);
+  console.log('dealerHand: ', dealerHand);
+  return [dealerHand, playerHand];
 }
 
-// need to have players or some way to identify the hands
-type FinishGame = (playerHand: Hand, dealerHand: Hand) => string;
+console.log(startGame('Jake', shuffledDeck));
 
-const finishGame: FinishGame = (playerHand, dealerHand) => {
-  if (playerHand.value > dealerHand.value) return playerHand.name;
-  return dealerHand.name;
-};
