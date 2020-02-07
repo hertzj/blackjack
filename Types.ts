@@ -170,7 +170,7 @@ const hitParticipant: HitParticipant = (hand, deck) => {
 type FinishGame = (dealerHand: Hand, playerHand: Hand) => string;
 
 const finishGame: FinishGame = (dealerHand, playerHand) => {
-  if (playerHand.value > dealerHand.value) return `${playerHand.name} wins!`;
+  if (playerHand.value() > dealerHand.value()) return `${playerHand.name} wins!`;
   return `${dealerHand.name} wins!`;
 };
 
@@ -197,5 +197,6 @@ const startGame: StartGame = (playerName, deck) => {
   return [dealerHand, playerHand];
 }
 
-console.log(startGame('Jake', shuffledDeck));
+const hands = startGame('Jake', shuffledDeck);
 
+console.log(finishGame(hands[0], hands[1]));

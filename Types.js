@@ -140,7 +140,7 @@ var hitParticipant = function (hand, deck) {
     return card;
 };
 var finishGame = function (dealerHand, playerHand) {
-    if (playerHand.value > dealerHand.value)
+    if (playerHand.value() > dealerHand.value())
         return playerHand.name + " wins!";
     return dealerHand.name + " wins!";
 };
@@ -163,4 +163,5 @@ var startGame = function (playerName, deck) {
     console.log('dealerHand: ', dealerHand);
     return [dealerHand, playerHand];
 };
-console.log(startGame('Jake', shuffledDeck));
+var hands = startGame('Jake', shuffledDeck);
+console.log(finishGame(hands[0], hands[1]));
