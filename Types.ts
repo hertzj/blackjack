@@ -2,6 +2,19 @@
 type Card = string;
 type Suit = string[];
 type Deck = Card[];
+type PlayerDeck = PlayerCard[];
+type DealSplit = (shuffledDeck: Deck) => PlayerCard;
+enum Royals {
+  Jack = 'J',
+  Queen = 'Q',
+  King = 'K',
+  Ace = 'A'
+}
+// hands - might want to seperate out value and suit
+interface PlayerCard {
+  value: string;
+  faceUp: boolean;
+};
 
 const hearts = 'H2 H3 H4 H5 H6 H7 H8 H9 H10 HJ HQ HK HA'.split(' ');
 const spades = 'S2 S3 S4 S5 S6 S7 S8 S9 S10 SJ SQ SK SA'.split(' ');
@@ -18,12 +31,6 @@ const createDeck: CreateDeck = (suit1, suit2, suit3, suit4) => {
 }
 
 const fullDeck = createDeck(hearts, spades, diamonds, clubs);
-
-// hands - might want to seperate out value and suit
-interface PlayerCard {
-  value: string;
-  faceUp: boolean;
-};
 
 // a hand should be a class
 // interface Hand {
@@ -43,23 +50,24 @@ class Hand {
     // but I think not because of how I declare cards right above
   }
   public value(): number {
-    const mapRoyalToVal = {
+    const mapRoyalToVal: { [key in Royals]: number } = {
       J: 10,
       Q: 10,
       K: 10,
       A: 11,
     };
-    const royalKeys = Object.keys(mapRoyalToVal);
+    const royalKeys = Object.keys(mapRoyalToVal) as Royals[];
     return this.cards.reduce((acc: number, card: PlayerCard) => {
-      let num = card.value.slice(1);
-      if (acc > 21 && royalKeys.indexOf(num) === 4) {
+      const cardVal = card.value.slice(1) as Royals;
+      let num: string | number = cardVal;
+      if (acc > 21 && royalKeys.indexOf(cardVal) === 4) {
         num = '1';
       }
-      else if (royalKeys.indexOf(num) === 4 && (acc + 11) > 21) {
+      else if (royalKeys.indexOf(cardVal) === 4 && (acc + 11) > 21) {
         num = '1';
       }
-      else if (royalKeys.indexOf(num) > -1) {
-        num = mapRoyalToVal[num]
+      else if (royalKeys.indexOf(cardVal) > -1) {
+        num = mapRoyalToVal[cardVal]
       }
       acc += Number(num);
       return acc;
@@ -133,9 +141,16 @@ const initialDeal: InitialDeal = shuffledDeck => {
   return [playerHand, dealerHand];
 }
 
-type DealSplit = (shuffledDeck: Deck) => PlayerCard;
-
 const dealSplit: DealSplit = shuffledDeck => {
-  const card: PlayerCard = shuffledDeck.pop();
-  return card;
+  // I think some things are broken with this code...
+  const playerDeck: PlayerDeck = shuffledDeck.map(card => ({
+    value: card,
+    faceUp: false,
+  }));
+  // Its a bit confusing, you suggest PlayerCard here, but decks are defined as collections of Cards.
+  const card: PlayerCard | undefined = playerDeck.pop();
+
+  if (card) return card;
+
+  throw new Error('shuffledDeck was empty.');
 };
