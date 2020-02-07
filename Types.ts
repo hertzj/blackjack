@@ -37,8 +37,10 @@ interface PlayerCard {
 
 class Hand {
   public cards: PlayerCard[];
-  constructor(card1: PlayerCard, card2: PlayerCard) {
+  public name: string;
+  constructor(card1: PlayerCard, card2: PlayerCard, name: string = 'dealer') {
     this.cards = [card1, card2]
+    this.name = name;
     // this might declare that the cards can only be two...
     // but I think not because of how I declare cards right above
   }
@@ -68,10 +70,15 @@ class Hand {
   public split(): [Hand, Hand] {
     const card1 = this.cards[0];
     const card2 = this.cards[1];
-    const splitHandOne = new Hand(card1, dealSplit(shuffledDeck));
-    const splitHandTwo = new Hand(card2, dealSplit(shuffledDeck));
+    const splitHandOne = new Hand(card1, dealCard(shuffledDeck));
+    const splitHandTwo = new Hand(card2, dealCard(shuffledDeck));
     // come back to this;
     return [splitHandOne, splitHandTwo];
+  }
+
+  public hit(card: PlayerCard): PlayerCard {
+    this.cards.push(card);
+    return card;
   }
 
 }
@@ -133,9 +140,26 @@ const initialDeal: InitialDeal = shuffledDeck => {
   return [playerHand, dealerHand];
 }
 
-type DealSplit = (shuffledDeck: Deck) => PlayerCard;
+type DealCard = (shuffledDeck: Deck) => PlayerCard;
 
-const dealSplit: DealSplit = shuffledDeck => {
+const dealCard: DealCard = shuffledDeck => {
   const card: PlayerCard = shuffledDeck.pop();
   return card;
+};
+
+
+type HitParticipant = (hand: Hand, deck: Deck) => PlayerCard;
+
+const hitParticipant: HitParticipant = (hand, deck) => {
+  const card = dealCard(deck);
+  hand.hit(card);
+  return card;
+}
+
+// need to have players or some way to identify the hands
+type FinishGame = (playerHand: Hand, dealerHand: Hand) => string;
+
+const finishGame: FinishGame = (playerHand, dealerHand) => {
+  if (playerHand.value > dealerHand.value) return playerHand.name;
+  return dealerHand.name;
 };
